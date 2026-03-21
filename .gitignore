@@ -1,0 +1,37 @@
+# Agent skills
+/.agent
+
+# Freqtrade Data & Logs
+/user_data/data/*
+/user_data/logs/*
+/user_data/backtest_results/*
+/user_data/*.sqlite
+
+# Dashboard SQLite Database (Aggregated)
+/user_data/dashboard.sqlite
+dashboard.sqlite
+
+# API Keys & Configuration Secrets
+.env
+config.json
+/user_data/config.json
+**/config.json
+
+# Next.js / Node
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,84 @@
+version: '3'
+services:
+  # Python Aggregator - runs automatically via continuous loop
+  aggregator:
+    image: freqtradeorg/freqtrade:stable
+    restart: unless-stopped
+    container_name: ft_dashboard_aggregator
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+    entrypoint: >
+      /bin/sh -c "while true; do python3 /freqtrade/user_data/aggregator.py; sleep 30; done"
+
+  # Bot 1 - BinHV45 (Inside berlinguyinca)
+  bot1:
+    image: freqtradeorg/freqtrade:stable
+    restart: unless-stopped
+    container_name: ft_bot1_binhv45
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/bot1_binhv45.log
+      --db-url sqlite:////freqtrade/user_data/bot1_trades.sqlite
+      --config /freqtrade/user_data/config.json
+      --strategy-path /freqtrade/user_data/strategies/berlinguyinca
+      --strategy BinHV45
+
+  # Bot 2 - ClucMay72018 (Inside berlinguyinca)
+  bot2:
+    image: freqtradeorg/freqtrade:stable
+    restart: unless-stopped
+    container_name: ft_bot2_clucmay
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/bot2_clucmay.log
+      --db-url sqlite:////freqtrade/user_data/bot2_trades.sqlite
+      --config /freqtrade/user_data/config.json
+      --strategy-path /freqtrade/user_data/strategies/berlinguyinca
+      --strategy ClucMay72018
+
+  # Bot 3 - UniversalMACD (Root strategies)
+  bot3:
+    image: freqtradeorg/freqtrade:stable
+    restart: unless-stopped
+    container_name: ft_bot3_umacd
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/bot3_umacd.log
+      --db-url sqlite:////freqtrade/user_data/bot3_trades.sqlite
+      --config /freqtrade/user_data/config.json
+      --strategy UniversalMACD
+
+  # Bot 4 - SmoothScalp (Inside berlinguyinca)
+  bot4:
+    image: freqtradeorg/freqtrade:stable
+    restart: unless-stopped
+    container_name: ft_bot4_smoothscalp
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/bot4_smoothscalp.log
+      --db-url sqlite:////freqtrade/user_data/bot4_trades.sqlite
+      --config /freqtrade/user_data/config.json
+      --strategy-path /freqtrade/user_data/strategies/berlinguyinca
+      --strategy SmoothScalp
+
+  # Bot 5 - Bandtastic (Root strategies)
+  bot5:
+    image: freqtradeorg/freqtrade:stable
+    restart: unless-stopped
+    container_name: ft_bot5_bandtastic
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/bot5_bandtastic.log
+      --db-url sqlite:////freqtrade/user_data/bot5_trades.sqlite
+      --config /freqtrade/user_data/config.json
+      --strategy Bandtastic
