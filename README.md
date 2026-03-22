@@ -31,9 +31,21 @@ npm run dev
 ```
 Navigate to `http://localhost:3000` to view your dashboard.
 
-### 3. (Optional) Load Demo Mode
-If you don't want to wait hours for the bots to naturally close dry-run trades, you can instantly populate the Dashboard UI with 8,000+ trades parsed from historical `backtest` files.
+### 3. Toggling Dashboard Modes (Live vs Demo)
+The dashboard reads from a central SQLite database (`dashboard.sqlite`). You can easily switch between viewing real-time dry-run trades and historical backtest data.
+
+**To view LIVE Dry-Run Data (Real-time bots):**
+If you previously loaded demo data, clear the database and restart the aggregator to pull fresh live data.
 ```bash
+rm user_data/dashboard.sqlite
+docker compose -f docker-compose.multi.yml restart aggregator
+```
+
+**To view DEMO Data (8,000+ Backtest trades directly on the UI):**
+Stop the aggregator from appending live data, clear the DB, and run the demo loader.
+```bash
+docker compose -f docker-compose.multi.yml stop aggregator
+rm user_data/dashboard.sqlite
 docker compose run --rm --entrypoint python3 freqtrade /freqtrade/user_data/load_demo.py
 ```
 
