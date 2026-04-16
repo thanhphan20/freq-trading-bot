@@ -19,8 +19,6 @@ from freqtrade.optimize.hyperopt_interface import IHyperOpt
 # --------------------------------
 # Add your lib to import here
 # import talib.abstract as ta  # noqa
-from ta import add_all_ta_features
-from ta.utils import dropna
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 # this is your trading strategy DNA Size
 # you can change it and see the results...

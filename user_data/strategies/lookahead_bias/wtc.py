@@ -125,7 +125,8 @@ class wtc(IStrategy):
             # print('stoch:\t', dataframe['stoch'].min(), dataframe['stoch'].max())
             dataframe['def'] = dataframe['slowk']-dataframe['wt1']
             # print('def:\t', dataframe['def'].min(), "\t", dataframe['def'].max())
-        except:
+        except Exception:
+
             dataframe['wt1'], dataframe['wt2'], dataframe['def'], dataframe['slowk'] = 0, 10, 100, 1000
         return dataframe
 

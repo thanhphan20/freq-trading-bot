@@ -1,13 +1,10 @@
-import os
 import glob
 import json
 import zipfile
 import pandas as pd
-import sqlite3
-import sys
 
 # Import aggregator logic
-from aggregator import init_db, update_metrics, DASHBOARD_DB
+from aggregator import init_db, update_metrics
 
 def load_demo_data():
     conn = init_db()

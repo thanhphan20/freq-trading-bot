@@ -10,16 +10,12 @@
 # IMPORTANT: Use Smallest "max_open_trades" for getting best results inside config.json
 
 # --- Do not remove these libs ---
-import logging
 from functools import reduce
 
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 import numpy as np
 # Add your lib to import here
-import talib.abstract as ta
-import pandas as pd
 from freqtrade.strategy import IStrategy
-from numpy.lib import math
 from pandas import DataFrame
 from ta import add_all_ta_features
 from ta.utils import dropna

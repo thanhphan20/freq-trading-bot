@@ -11,8 +11,6 @@ Supertrend strategy:
             2. The implementation for `supertrend` on this strategy is not validated; meaning this that is not proven to match the results by the paper where it was originally introduced or any other trusted academic resources
 """
 
-import logging
-from numpy.lib import math
 from freqtrade.strategy import IStrategy, IntParameter
 from pandas import DataFrame
 import talib.abstract as ta

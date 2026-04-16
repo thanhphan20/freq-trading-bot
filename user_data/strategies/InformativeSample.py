@@ -1,13 +1,10 @@
 
 # --- Do not remove these libs ---
 from freqtrade.strategy import IStrategy, merge_informative_pair
-from typing import Dict, List
-from functools import reduce
 from pandas import DataFrame
 # --------------------------------
 
 import talib.abstract as ta
-import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 
 class InformativeSample(IStrategy):
@@ -70,7 +67,7 @@ class InformativeSample(IStrategy):
                             ("BTC/USDT", "15m"),
                             ]
         """
-        return [(f"BTC/USDT", '15m')]
+        return [("BTC/USDT", '15m')]
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -87,7 +84,7 @@ class InformativeSample(IStrategy):
         if self.dp:
             # Get ohlcv data for informative pair at 15m interval.
             inf_tf = '15m'
-            informative = self.dp.get_pair_dataframe(pair=f"BTC/USDT",
+            informative = self.dp.get_pair_dataframe(pair="BTC/USDT",
                                                      timeframe=inf_tf)
 
             # calculate SMA20 on informative pair

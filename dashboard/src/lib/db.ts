@@ -12,13 +12,13 @@ export function getDbConnection() {
   });
 }
 
-export function queryDb(query: string, params: any[] = []): Promise<any[]> {
+export function queryDb<T = unknown>(query: string, params: unknown[] = []): Promise<T[]> {
   return new Promise((resolve, reject) => {
     const db = getDbConnection();
     db.all(query, params, (err, rows) => {
       db.close();
       if (err) reject(err);
-      else resolve(rows);
+      else resolve(rows as T[]);
     });
   });
 }

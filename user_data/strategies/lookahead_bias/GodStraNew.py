@@ -3,10 +3,8 @@
 # github: https://github.com/mablue/
 # freqtrade hyperopt --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing sell --strategy GodStraNew
 # --- Do not remove these libs ---
-from freqtrade import data
 from freqtrade.strategy import CategoricalParameter, DecimalParameter
 
-from numpy.lib import math
 from freqtrade.strategy import IStrategy
 from pandas import DataFrame
 
@@ -18,7 +16,6 @@ import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 from functools import reduce
 import numpy as np
-from random import shuffle
 #  TODO: this gene is removed 'MAVP' cuz or error on periods
 all_god_genes = {
     'Overlap Studies': {

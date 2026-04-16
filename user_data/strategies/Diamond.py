@@ -45,7 +45,6 @@ from pandas import DataFrame
 # --------------------------------
 
 # Add your lib to import here
-import talib.abstract as ta
 from functools import reduce
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 

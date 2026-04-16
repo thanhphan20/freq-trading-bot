@@ -1,7 +1,5 @@
 # --- Do not remove these libs ---
 from freqtrade.strategy import IStrategy
-from typing import Dict, List
-from functools import reduce
 from pandas import DataFrame
 # --------------------------------
 import talib.abstract as ta

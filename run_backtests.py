@@ -72,7 +72,7 @@ def run():
             f.write(result.stdout)
             
         if "invalid reference format" in result.stdout:
-            print(f"❌ Docker lỗi: invalid reference format. File docker-compose.yml cấu hình image sai.")
+            print("❌ Docker lỗi: invalid reference format. File docker-compose.yml cấu hình image sai.")
             break
             
         if result.returncode != 0:

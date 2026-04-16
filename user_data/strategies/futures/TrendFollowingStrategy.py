@@ -1,10 +1,8 @@
-from functools import reduce
 from pandas import DataFrame
 from freqtrade.strategy import IStrategy
 
 import talib.abstract as ta
 
-from freqtrade.strategy.interface import IStrategy
 
 class TrendFollowingStrategy(IStrategy):
 

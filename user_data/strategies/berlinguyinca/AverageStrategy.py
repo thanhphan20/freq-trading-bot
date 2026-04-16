@@ -1,7 +1,6 @@
 # --- Do not remove these libs ---
-from functools import reduce
 from freqtrade.strategy import IStrategy
-from freqtrade.strategy import CategoricalParameter, DecimalParameter, IntParameter
+from freqtrade.strategy import IntParameter
 from pandas import DataFrame
 # --------------------------------
 

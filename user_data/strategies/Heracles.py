@@ -11,18 +11,20 @@
 #
 # freqtrade hyperopt --hyperopt-loss SharpeHyperOptLoss --spaces roi buy --strategy Heracles
 # ######################################################################
-# --- Do not remove these libs ---
+# --- Do not reimport talib.abstract as ta
 from freqtrade.strategy import IntParameter, DecimalParameter, IStrategy
 from pandas import DataFrame
+try:
+    from freqtrade.persistence import Trade
+except Exception:
+    Trade = None
+
 # --------------------------------
 # Add your lib to import here
-import talib.abstract as ta
-import pandas as pd
 import ta
 from ta.utils import dropna
-import freqtrade.vendor.qtpylib.indicators as qtpylib
 from functools import reduce
-import numpy as np
+
 
 
 class Heracles(IStrategy):

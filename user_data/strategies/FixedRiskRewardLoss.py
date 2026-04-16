@@ -10,7 +10,6 @@ from freqtrade.strategy import IStrategy
 # --------------------------------
 # Add your lib to import here
 import talib.abstract as ta
-import freqtrade.vendor.qtpylib.indicators as qtpylib
 from datetime import datetime
 from freqtrade.persistence import Trade
 

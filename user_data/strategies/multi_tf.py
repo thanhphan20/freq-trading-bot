@@ -1,14 +1,8 @@
-import freqtrade.vendor.qtpylib.indicators as qtpylib
-import numpy as np
 import talib.abstract as ta
 from freqtrade.strategy import (IStrategy, informative)
-from pandas import DataFrame, Series
-import talib.abstract as ta
-import math
-import pandas_ta as pta
+from pandas import DataFrame
 # from finta import TA as fta
 import logging
-from logging import FATAL
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +109,7 @@ class multi_tf (IStrategy):
                 &
                 (dataframe['rsi'] < 30)
                 &
-                (dataframe['rsi_less'] == True)
+                (dataframe['rsi_less'])
                 &
                 (dataframe['volume'] > 0)
             ),
@@ -129,7 +123,7 @@ class multi_tf (IStrategy):
             (
                 (dataframe['rsi'] > 70)
                 &
-                (dataframe['rsi_less'] == False)
+                (not dataframe['rsi_less'])
                 &
                 (dataframe['volume'] > 0)
             ),

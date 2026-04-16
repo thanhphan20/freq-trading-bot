@@ -11,12 +11,9 @@ status      = "Live"
 
 from freqtrade.strategy import IStrategy
 from freqtrade.strategy import IntParameter
-from functools import reduce
 from pandas import DataFrame
 
 import talib.abstract as ta
-import freqtrade.vendor.qtpylib.indicators as qtpylib
-import numpy
 
 
 

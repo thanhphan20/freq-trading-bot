@@ -1,7 +1,4 @@
-import talib.abstract as ta
 from pandas import DataFrame
-import scipy.signal
-import freqtrade.vendor.qtpylib.indicators as qtpylib
 from freqtrade.strategy import IStrategy
 
 

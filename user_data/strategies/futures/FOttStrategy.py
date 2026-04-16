@@ -1,5 +1,3 @@
-import logging
-from numpy.lib import math
 from freqtrade.strategy import IStrategy
 from pandas import DataFrame
 import talib.abstract as ta

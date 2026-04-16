@@ -2,12 +2,48 @@
 
 import { useEffect, useState } from "react";
 import { LineChart, Line, BarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ZAxis, Brush } from "recharts";
-import { ArrowUpCircle, ArrowDownCircle, ShieldCheck, Activity, Target, Clock, TrendingDown, Maximize2, Minimize2, X } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, ShieldCheck, Activity, Target, Clock, TrendingDown, Maximize2, X } from "lucide-react";
+
+interface Strategy {
+  strategy_id: string;
+  strategy_name: string;
+  bot_name: string;
+  total_profit_abs: number;
+  total_profit_pct: number;
+  win_rate: number;
+  sharpe_ratio: number;
+  max_drawdown: number;
+  avg_duration_min: number;
+  abs_profit: number;
+}
+
+interface ChartRow {
+  timestamp: string;
+  [key: string]: string | number;
+}
+
+interface DailyRow {
+  date: string;
+  [key: string]: string | number;
+}
+
+interface RawCurveRow {
+  timestamp: string;
+  strategy_id: string;
+  cumulative_profit: number;
+}
+
+interface RawPerformanceRow {
+  date: string;
+  strategy_id: string;
+  daily_profit_abs: number;
+}
+
 
 export default function Dashboard() {
-  const [strategies, setStrategies] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [dailyData, setDailyData] = useState<any[]>([]);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [chartData, setChartData] = useState<ChartRow[]>([]);
+  const [dailyData, setDailyData] = useState<DailyRow[]>([]);
   
   // Trạng thái bật tắt Fullscreen
   const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
@@ -16,8 +52,7 @@ export default function Dashboard() {
     fetch("/api/strategies")
       .then((res) => res.json())
       .then((data) => {
-        // Fix zAxis cho ScatterChart không được âm: Ta tạo trường abs_profit
-        const strats = (data.strategies || []).map((s: any) => ({
+        const strats = (data.strategies || []).map((s: Strategy) => ({
           ...s,
           abs_profit: Math.abs(s.total_profit_abs || 0)
         }));
@@ -28,27 +63,26 @@ export default function Dashboard() {
       .then((res) => res.json())
       .then((data) => {
         if (data.curve) {
-          const groupedData = data.curve.reduce((acc: any, row: any) => {
+          const groupedData = data.curve.reduce((acc: Record<string, ChartRow>, row: RawCurveRow) => {
             if (!acc[row.timestamp]) acc[row.timestamp] = { timestamp: row.timestamp };
             acc[row.timestamp][row.strategy_id] = row.cumulative_profit;
             return acc;
           }, {});
-          setChartData(Object.values(groupedData));
+          setChartData(Object.values(groupedData) as ChartRow[]);
         }
       });
 
     fetch("/api/daily-performance")
       .then((res) => res.json())
       .then((data) => {
-        // Fix lõi API mapping: Trả về { performance } chứ không phải { daily }
         if (data.performance) {
-          const groupedData = data.performance.reduce((acc: any, row: any) => {
+          const groupedData = data.performance.reduce((acc: Record<string, DailyRow>, row: RawPerformanceRow) => {
             if (!acc[row.date]) acc[row.date] = { date: row.date };
             acc[row.date][row.strategy_id] = row.daily_profit_abs;
             return acc;
           }, {});
           
-          const sorted = Object.values(groupedData).sort((a: any, b: any) => {
+          const sorted = (Object.values(groupedData) as DailyRow[]).sort((a: DailyRow, b: DailyRow) => {
             return new Date(a.date).getTime() - new Date(b.date).getTime();
           });
           setDailyData(sorted);
@@ -177,7 +211,7 @@ export default function Dashboard() {
             <ShieldCheck className="w-6 h-6 text-emerald-500" /> Live Rankings
           </h2>
           <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-4">
-            {strategies.map((strat: any, idx) => (
+            {strategies.map((strat: Strategy, idx) => (
                <div key={strat.strategy_id} className="bg-neutral-950 p-5 rounded-lg border border-neutral-800 relative transition-transform hover:scale-[1.02]">
                  <div className="absolute top-0 right-0 p-2 text-xs font-mono font-bold text-neutral-500 bg-neutral-900 rounded-bl-lg">RANK #{idx + 1}</div>
                  <h3 className="font-semibold text-lg text-neutral-200 truncate pr-16">{strat.strategy_name}</h3>

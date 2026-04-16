@@ -128,7 +128,7 @@ def process_bot_db(source_db_path, bot_name, conn):
                     (id, bot_name, strategy_name, strategy_id, open_date, close_date, close_profit_abs, close_profit_pct, trade_duration_min, is_win)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (row['id'], row['bot_name'], row['strategy_name'], row['strategy_id'], str(row['open_date']), str(row['close_date']), row['close_profit_abs'], row['close_profit_pct'], row['trade_duration_min'], row['is_win']))
-                except Exception as e:
+                except Exception:
                     pass
             conn.commit()
             print(f"[{bot_name}] Appended {len(new_trades_df)} new trades.")

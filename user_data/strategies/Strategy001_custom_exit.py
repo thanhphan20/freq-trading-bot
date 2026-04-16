@@ -1,9 +1,13 @@
 
 # --- Do not remove these libs ---
 from freqtrade.strategy import IStrategy
-from typing import Dict, List
-from functools import reduce
 from pandas import DataFrame
+from datetime import datetime
+try:
+    from freqtrade.persistence import Trade
+except ImportError:
+    Trade = None
+
 # --------------------------------
 
 import talib.abstract as ta
