@@ -1,1 +1,1 @@
-﻿ruff check . && npm run build --prefix dashboard
+ruff check . && npm run build --prefix dashboard
