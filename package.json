@@ -1,0 +1,33 @@
+{
+  "name": "freq-trading-bot",
+  "version": "1.0.0",
+  "description": "An advanced architectural setup for [Freqtrade](https://www.freqtrade.io/) that enables running multiple strategies in parallel (Multi-bot) and aggregating their performance into a beautiful, real-time Next.js Dashboard.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thanhphan20/freq-trading-bot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/thanhphan20/freq-trading-bot/issues"
+  },
+  "homepage": "https://github.com/thanhphan20/freq-trading-bot#readme",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  },
+  "lint-staged": {
+    "**/*.py": "ruff check --fix",
+    "dashboard/**/*.{js,jsx,ts,tsx}": "npm run lint --prefix dashboard"
+  }
+}

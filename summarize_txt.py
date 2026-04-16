@@ -27,10 +27,12 @@ for file in files:
     for line in lines:
         if "│ Absolute drawdown" in line:
             m = re.search(r'│\s+([0-9\.]+)\s+USDT', line)
-            if m: drawdown = float(m.group(1))
+            if m:
+                drawdown = float(m.group(1))
         if "│ Sharpe" in line:
             m = re.search(r'│\s+(-?[0-9\.]+)\s+│', line)
-            if m: sharpe = float(m.group(1))
+            if m:
+                sharpe = float(m.group(1))
             
     # Tìm dòng bảng Strategy Summary ở cuối
     for line in reversed(lines):
@@ -43,7 +45,7 @@ for file in files:
                     profit_pct = parts[5]
                     win_str = parts[7].split()[-1]
                     win_rate = float(win_str)
-                except Exception as e:
+                except Exception:
                     pass
             break
             
