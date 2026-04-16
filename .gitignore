@@ -6,7 +6,6 @@
 /user_data/logs/*
 /user_data/backtest_results/*
 /user_data/backtest_logs/*
-/user_data/backtest_summaries/*
 /user_data/*.sqlite
 /user_data/*.sqlite-shm
 /user_data/*.sqlite-wal

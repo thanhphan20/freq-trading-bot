@@ -1,0 +1,1 @@
+FAILED - TRACEBACK EXCEPTION. Lỗi code Python hoặc thiếu Indicator hiếm.
