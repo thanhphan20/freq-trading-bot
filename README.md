@@ -26,8 +26,8 @@ docker compose -f docker-compose.multi.yml up -d
 ### 2. Start the Analytics Dashboard (Frontend)
 ```bash
 cd dashboard
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 Navigate to `http://localhost:3000` to view your dashboard.
 
@@ -48,6 +48,8 @@ docker compose -f docker-compose.multi.yml stop aggregator
 rm user_data/dashboard.sqlite
 docker compose run --rm --entrypoint python3 freqtrade /freqtrade/user_data/load_demo.py
 ```
+
+![alt text](image.png)
 
 ## 🔒 Security
 - All Exchange API keys (Binance, etc.) in `config.json` are excluded from Git natively.
