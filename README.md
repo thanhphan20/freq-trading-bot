@@ -10,7 +10,7 @@ An advanced architectural setup for [Freqtrade](https://www.freqtrade.io/) that 
 
 ## 🛠 Prerequisites
 - Docker & Docker Compose
-- Node.js 18+ & npm
+- Node.js 18+ & pnpm
 - MacOS/Linux environment.
 
 ---
