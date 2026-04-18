@@ -6,7 +6,7 @@ import numpy as np
 from datetime import datetime
 
 # Path to the dashboard database (mounted to host)
-DASHBOARD_DB = "/freqtrade/user_data/dashboard.sqlite"
+DASHBOARD_DB = "user_data/dashboard.sqlite"
 
 def init_db():
     conn = sqlite3.connect(DASHBOARD_DB)

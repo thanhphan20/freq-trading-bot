@@ -2,6 +2,8 @@ import glob
 import json
 import zipfile
 import pandas as pd
+import sqlite3
+import os
 
 # Import aggregator logic
 from aggregator import init_db, update_metrics
@@ -19,7 +21,7 @@ def load_demo_data():
     print("Database cleared for demo mode.")
 
     # 2. Find all zip files
-    zip_files = glob.glob("/freqtrade/user_data/backtest_results/*.zip")
+    zip_files = glob.glob("user_data/backtest_results/*.zip")
     
     all_trades = []
     fake_id = 1
