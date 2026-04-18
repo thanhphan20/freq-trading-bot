@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { LineChart, Line, BarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ZAxis, Brush } from "recharts";
-import { ArrowUpCircle, ArrowDownCircle, ShieldCheck, Activity, Target, Clock, TrendingDown, Maximize2, X } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { 
+  LineChart, Line, BarChart, Bar, ScatterChart, Scatter, 
+  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
+  Legend, ResponsiveContainer, ZAxis, Brush 
+} from "recharts";
+import { 
+  ArrowUpCircle, ArrowDownCircle, ShieldCheck, Activity, 
+  Target, Clock, TrendingDown, Maximize2, X, Filter, Eye, EyeOff
+} from "lucide-react";
 
 interface Strategy {
   strategy_id: string;
@@ -39,16 +46,57 @@ interface RawPerformanceRow {
   daily_profit_abs: number;
 }
 
+interface DemoData {
+  generated_at: string;
+  strategies: Strategy[];
+  equityCurve: RawCurveRow[];
+  dailyPerformance: RawPerformanceRow[];
+}
+
+import { IS_DEMO_MODE } from "@/lib/db";
+import demoDataImport from "@/data/demo_data.json";
+const demoData = demoDataImport as unknown as DemoData;
+
+const COLORS = ["#3b82f6", "#60a5fa", "#fbbf24", "#f87171", "#a78bfa", "#f472b6", "#2dd4bf", "#fb7185", "#e5e7eb", "#818cf8"];
+
+// Custom Tooltip Component
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CustomTooltip = ({ active, payload, label, type }: { active?: boolean, payload?: any[], label?: string, type?: string }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-lg shadow-2xl backdrop-blur-md">
+        <p className="text-neutral-400 text-xs mb-2 font-mono uppercase tracking-widest">
+          {type === 'daily' ? label : new Date(label || '').toLocaleString()}
+        </p>
+        <div className="space-y-2">
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                <span className="text-sm font-medium text-neutral-200">{entry.name}</span>
+              </div>
+              <span className={`text-sm font-bold ${entry.value >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {entry.value.toFixed(2)} {type === 'equity' || type === 'daily' ? 'USDT' : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function Dashboard() {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [chartData, setChartData] = useState<ChartRow[]>([]);
   const [dailyData, setDailyData] = useState<DailyRow[]>([]);
-  
-  // Trạng thái bật tắt Fullscreen
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
 
   useEffect(() => {
+    // 1. Fetch Strategies
     fetch("/api/strategies")
       .then((res) => res.json())
       .then((data) => {
@@ -57,8 +105,10 @@ export default function Dashboard() {
           abs_profit: Math.abs(s.total_profit_abs || 0)
         }));
         setStrategies(strats);
+        setSelectedIds(strats.map((s: Strategy) => s.strategy_id));
       });
 
+    // 2. Fetch Equity Curve
     fetch("/api/equity-curve")
       .then((res) => res.json())
       .then((data) => {
@@ -72,6 +122,7 @@ export default function Dashboard() {
         }
       });
 
+    // 3. Fetch Daily Performance
     fetch("/api/daily-performance")
       .then((res) => res.json())
       .then((data) => {
@@ -90,215 +141,361 @@ export default function Dashboard() {
       });
   }, []);
 
-  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#a855f7", "#ec4899", "#14b8a6", "#f43f5e", "#fff", "#8b5cf6"];
+  // Filtered computed values
+  const filteredStrategies = useMemo(() => 
+    strategies.filter(s => selectedIds.includes(s.strategy_id)),
+    [strategies, selectedIds]
+  );
 
-  const renderFullscreen = () => {
-    if (!fullscreenChart) return null;
+  const filteredChartData = useMemo(() => 
+    chartData.map(row => {
+      const filteredRow: ChartRow = { timestamp: row.timestamp };
+      selectedIds.forEach(id => {
+        if (row[id] !== undefined) filteredRow[id] = row[id];
+      });
+      return filteredRow;
+    }),
+    [chartData, selectedIds]
+  );
 
-    return (
-      <div className="fixed inset-0 z-50 bg-neutral-950/95 backdrop-blur flex flex-col p-6 animate-in fade-in zoom-in duration-200">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-neutral-100 flex items-center gap-3">
-            <Maximize2 className="w-6 h-6 text-blue-500" /> 
-            {fullscreenChart === 'equity' ? 'Equity Curve (USDT)' : 
-             fullscreenChart === 'daily' ? 'Daily PnL Distribution' :
-             fullscreenChart === 'winrate' ? 'Risk & Reward Landscape' : ''}
-          </h2>
-          <button 
-            onClick={() => setFullscreenChart(null)}
-            className="p-2 bg-neutral-800 hover:bg-rose-500/20 text-neutral-400 hover:text-rose-500 rounded-full transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        <div className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-6 shadow-2xl">
-          {fullscreenChart === 'equity' && (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis dataKey="timestamp" stroke="#737373" tickFormatter={(val) => new Date(val).toLocaleDateString()} minTickGap={50} />
-                <YAxis stroke="#737373" domain={['auto', 'auto']} />
-                <RechartsTooltip contentStyle={{ backgroundColor: "#171717", borderColor: "#262626", color: "#f5f5f5" }} labelFormatter={(l) => new Date(l).toLocaleString()} />
-                <Legend wrapperStyle={{ paddingTop: "20px" }} />
-                {strategies.map((strat, i) => (
-                  <Line key={strat.strategy_id} type="monotone" name={strat.strategy_name} dataKey={strat.strategy_id} stroke={colors[i % colors.length]} strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
-                ))}
-                {/* Thanh Zoom/Brush Phóng To Thu Nhỏ Đáy Khung */}
-                <Brush dataKey="timestamp" height={40} stroke="#3b82f6" fill="#171717" tickFormatter={(v) => new Date(v).toLocaleDateString()} travellerWidth={15} />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-          {fullscreenChart === 'daily' && (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyData} margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis dataKey="date" stroke="#737373" />
-                <YAxis stroke="#737373" />
-                <RechartsTooltip contentStyle={{ backgroundColor: "#171717", borderColor: "#262626", color: "#f5f5f5" }} />
-                <Legend wrapperStyle={{ paddingTop: "20px" }} />
-                {strategies.map((strat, i) => (
-                  <Bar key={strat.strategy_id} dataKey={strat.strategy_id} name={strat.strategy_name} stackId="a" fill={colors[i % colors.length]} />
-                ))}
-                {/* Thanh Zoom/Brush Phóng To Thu Nhỏ Đáy Khung */}
-                <Brush dataKey="date" height={40} stroke="#10b981" fill="#171717" travellerWidth={15} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-          {fullscreenChart === 'winrate' && (
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis type="number" dataKey="win_rate" name="Win Rate" unit="%" stroke="#737373" domain={[0, 100]} />
-                <YAxis type="number" dataKey="max_drawdown" name="Max Drawdown" unit=" U" stroke="#737373" />
-                {/* ZAxis fix error (no negative size allowed) */}
-                <ZAxis type="number" dataKey="abs_profit" range={[100, 1000]} name="Total Profit | " />
-                <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: "#171717", borderColor: "#262626", color: "#f5f5f5" }} />
-                <Legend wrapperStyle={{ paddingTop: "20px" }} />
-                {strategies.map((strat, i) => (
-                  <Scatter key={strat.strategy_id} name={strat.strategy_name} data={[strat]} fill={colors[i % colors.length]} />
-                ))}
-              </ScatterChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
+  const filteredDailyData = useMemo(() => 
+    dailyData.map(row => {
+      const filteredRow: DailyRow = { date: row.date };
+      selectedIds.forEach(id => {
+        if (row[id] !== undefined) filteredRow[id] = row[id];
+      });
+      return filteredRow;
+    }),
+    [dailyData, selectedIds]
+  );
+
+  const toggleStrategy = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
   };
 
+  const toggleAll = () => {
+    if (selectedIds.length === strategies.length) setSelectedIds([]);
+    else setSelectedIds(strategies.map(s => s.strategy_id));
+  };
+
+  const isCloud = !IS_DEMO_MODE && strategies.length > 0;
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white p-6 font-sans">
-      {renderFullscreen()}
       
-      <header className="mb-6 flex justify-between items-center bg-neutral-900 border border-neutral-800 p-5 rounded-xl shadow-lg">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-neutral-100 flex items-center gap-3">
-            <Activity className="text-blue-500 w-8 h-8" />
-            Freqtrade Alpha Dashboard
-          </h1>
-          <p className="text-neutral-400 mt-1">Multi-bot Real-time Analytics & Equity Tracking</p>
+      {/* Fullscreen Overlay */}
+      {fullscreenChart && (
+        <div className="fixed inset-0 z-50 bg-neutral-950/98 flex flex-col p-8 animate-in fade-in zoom-in duration-300">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-bold text-neutral-100 flex items-center gap-4">
+              <Maximize2 className="w-8 h-8 text-blue-500" /> 
+              {fullscreenChart === 'equity' ? 'Equity Curve Analysis' : 
+               fullscreenChart === 'daily' ? 'Daily PnL Distribution' :
+               fullscreenChart === 'winrate' ? 'Risk & Reward Matrix' : ''}
+            </h2>
+            <button 
+              onClick={() => setFullscreenChart(null)}
+              className="p-3 bg-neutral-800 hover:bg-rose-500/20 text-neutral-400 hover:text-rose-500 rounded-full transition-all hover:rotate-90 cursor-pointer"
+            >
+              <X className="w-8 h-8" />
+            </button>
+          </div>
+          <div className="flex-1 bg-neutral-900/50 border border-neutral-800 rounded-2xl p-8 shadow-2xl min-h-0">
+            {fullscreenChart === 'equity' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={filteredChartData} margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                  <XAxis dataKey="timestamp" stroke="#737373" tickFormatter={(val) => new Date(val).toLocaleDateString()} minTickGap={50} />
+                  <YAxis stroke="#737373" domain={['auto', 'auto']} />
+                  <RechartsTooltip content={<CustomTooltip type="equity" />} />
+                  <Legend wrapperStyle={{ paddingTop: "30px" }} />
+                  {filteredStrategies.map((strat, i) => (
+                    <Line key={strat.strategy_id} type="monotone" name={strat.strategy_name} dataKey={strat.strategy_id} stroke={COLORS[i % COLORS.length]} strokeWidth={3} dot={false} activeDot={{ r: 8, strokeWidth: 0 }} />
+                  ))}
+                  <Brush dataKey="timestamp" height={40} stroke="#3b82f6" fill="#171717" tickFormatter={(v) => new Date(v).toLocaleDateString()} travellerWidth={15} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+            {fullscreenChart === 'daily' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={filteredDailyData} margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                  <XAxis dataKey="date" stroke="#737373" />
+                  <YAxis stroke="#737373" />
+                  <RechartsTooltip content={<CustomTooltip type="daily" />} />
+                  <Legend wrapperStyle={{ paddingTop: "30px" }} />
+                  {filteredStrategies.map((strat, i) => (
+                    <Bar key={strat.strategy_id} dataKey={strat.strategy_id} name={strat.strategy_name} stackId="a" fill={COLORS[i % COLORS.length]} />
+                  ))}
+                  <Brush dataKey="date" height={40} stroke="#10b981" fill="#171717" travellerWidth={15} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Header & Brand */}
+      <header className="mb-8 flex flex-col lg:flex-row justify-between lg:items-center bg-neutral-900 border border-neutral-800 p-6 rounded-2xl shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] -mr-32 -mt-32 rounded-full group-hover:bg-blue-500/10 transition-colors" />
+        
+        <div className="flex flex-col gap-2 relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+              <Activity className="text-blue-500 w-8 h-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-neutral-100 font-mono">
+                AlphaVault<span className="text-blue-500">_</span>
+              </h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded border uppercase tracking-widest flex items-center gap-1.5 ${
+                  IS_DEMO_MODE ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                }`}>
+                  {isCloud && <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />}
+                  {IS_DEMO_MODE ? "Historical Data" : "Cloud Sync Active"}
+                </span>
+                <p className="text-neutral-500 text-xs">
+                  {IS_DEMO_MODE 
+                    ? `Backtest: ${new Date(demoData.generated_at).toLocaleDateString()}`
+                    : "Live performance aggregator"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 lg:mt-0 flex items-center gap-4 relative z-10">
+           <div className="flex flex-col items-end">
+              <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-[0.2em] mb-1">Total Strategies</span>
+              <span className="text-2xl font-bold text-neutral-200">{strategies.length}</span>
+           </div>
+           <div className="w-[1px] h-10 bg-neutral-800 mx-2" />
+           <div className="flex flex-col items-end">
+              <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-[0.2em] mb-1">Status</span>
+              <span className="text-sm font-bold text-emerald-500 flex items-center gap-1">
+                <ShieldCheck className="w-4 h-4" /> SECURE
+              </span>
+           </div>
         </div>
       </header>
 
-      {/* Grid chính: Equity Curve (2 cột) + Rankings (1 cột) */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-        <div className="xl:col-span-2 flex flex-col bg-neutral-900 border border-neutral-800 rounded-xl p-5 shadow-lg relative group">
-          <button onClick={() => setFullscreenChart('equity')} className="absolute top-4 right-4 p-2 bg-neutral-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-neutral-700 z-10 cursor-pointer">
-            <Maximize2 className="w-5 h-5 text-neutral-300" />
+      {/* Model Filtering Section */}
+      <div className="mb-8 bg-neutral-900/40 border border-neutral-800/50 p-4 rounded-xl backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-4 px-2">
+          <div className="flex items-center gap-2 text-neutral-400 text-sm font-medium">
+            <Filter className="w-4 h-4" />
+            <span>Strategy Selector</span>
+          </div>
+          <button 
+            onClick={toggleAll}
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium flex items-center gap-1 cursor-pointer"
+          >
+            {selectedIds.length === strategies.length ? "Deselect All" : "Select All"}
           </button>
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-neutral-200">
-            Equity Curve (USDT)
-          </h2>
-          <div className="flex-1 min-h-[450px] w-full">
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {strategies.map((strat, i) => {
+            const isSelected = selectedIds.includes(strat.strategy_id);
+            return (
+              <button
+                key={strat.strategy_id}
+                onClick={() => toggleStrategy(strat.strategy_id)}
+                className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all duration-200 cursor-pointer ${
+                  isSelected 
+                    ? "bg-neutral-800 border-neutral-700 text-neutral-100" 
+                    : "bg-transparent border-neutral-800 text-neutral-500 grayscale opacity-50 hover:opacity-80"
+                }`}
+              >
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isSelected ? COLORS[i % COLORS.length] : "#404040" }} />
+                {strat.strategy_name}
+                {isSelected ? <Eye className="w-3 h-3 text-neutral-400" /> : <EyeOff className="w-3 h-3 text-neutral-600" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+        {/* Main Equity Chart */}
+        <div className="xl:col-span-2 flex flex-col bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl relative group min-w-0">
+          <button 
+            onClick={() => setFullscreenChart('equity')} 
+            className="absolute top-6 right-6 p-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+            title="Maximize View"
+          >
+            <Maximize2 className="w-5 h-5" />
+          </button>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-xl font-bold text-neutral-100 flex items-center gap-3">
+              <Activity className="w-5 h-5 text-blue-500" /> Equity Curve <span className="text-neutral-500 font-normal text-sm font-mono">(USDT)</span>
+            </h2>
+            <div className="flex gap-4">
+               <div className="text-right">
+                  <div className="text-[10px] text-neutral-500 uppercase tracking-widest mb-1">Selected Profit</div>
+                  <div className={`text-sm font-bold ${filteredStrategies.reduce((a, b) => a + (b.total_profit_abs || 0), 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {filteredStrategies.reduce((a, b) => a + (b.total_profit_abs || 0), 0).toFixed(2)} U
+                  </div>
+               </div>
+            </div>
+          </div>
+          <div className="flex-1 min-h-[450px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis dataKey="timestamp" stroke="#737373" fontSize={12} tickMargin={10} tickFormatter={(val) => new Date(val).toLocaleDateString()} minTickGap={30} />
-                <YAxis stroke="#737373" fontSize={12} domain={['auto', 'auto']} />
-                <RechartsTooltip contentStyle={{ backgroundColor: "#171717", borderColor: "#262626", color: "#f5f5f5" }} itemStyle={{ color: "#e5e5e5" }} labelFormatter={(l) => new Date(l).toLocaleString()} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: "20px" }} />
-                {strategies.map((strat, i) => (
-                  <Line key={strat.strategy_id} type="monotone" name={strat.strategy_name} dataKey={strat.strategy_id} stroke={colors[i % colors.length]} strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+              <LineChart data={filteredChartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                <XAxis dataKey="timestamp" stroke="#525252" fontSize={11} tickMargin={12} tickFormatter={(val) => new Date(val).toLocaleDateString()} minTickGap={40} />
+                <YAxis stroke="#525252" fontSize={11} domain={['auto', 'auto']} />
+                <RechartsTooltip content={<CustomTooltip type="equity" />} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: "24px", fontSize: "12px", color: "#a3a3a3" }} />
+                {filteredStrategies.map((strat, i) => (
+                  <Line key={strat.strategy_id} type="monotone" name={strat.strategy_name} dataKey={strat.strategy_id} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
                 ))}
-                {/* THANH SCROLL ZOOM CỦA TRADING (BRUSH) */}
-                <Brush dataKey="timestamp" height={25} stroke="#3b82f6" fill="#171717" tickFormatter={(v) => new Date(v).toLocaleDateString()} travellerWidth={10} />
+                <Brush dataKey="timestamp" height={30} stroke="#3b82f6" fill="#0a0a0a" tickFormatter={(v) => new Date(v).toLocaleDateString()} travellerWidth={12} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 shadow-lg overflow-hidden flex flex-col h-[560px]">
-          <h2 className="text-xl font-semibold mb-6 text-neutral-200 flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-emerald-500" /> Live Rankings
+        {/* Live Leaderboard */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl flex flex-col h-[600px] min-w-0">
+          <h2 className="text-xl font-bold mb-8 text-neutral-100 flex items-center gap-3">
+            <ShieldCheck className="w-6 h-6 text-emerald-500" /> Performance Leaderboard
           </h2>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-4">
-            {strategies.map((strat: Strategy, idx) => (
-               <div key={strat.strategy_id} className="bg-neutral-950 p-5 rounded-lg border border-neutral-800 relative transition-transform hover:scale-[1.02]">
-                 <div className="absolute top-0 right-0 p-2 text-xs font-mono font-bold text-neutral-500 bg-neutral-900 rounded-bl-lg">RANK #{idx + 1}</div>
-                 <h3 className="font-semibold text-lg text-neutral-200 truncate pr-16">{strat.strategy_name}</h3>
-                 <p className="text-xs text-neutral-500 mb-2">Bot: {strat.bot_name}</p>
-                 <div className="mt-3 flex justify-between items-end border-b border-neutral-800 pb-3 mb-3">
-                   <div>
-                     <span className={`text-2xl font-bold flex items-center gap-1 ${strat.total_profit_abs >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                       {strat.total_profit_abs >= 0 ? <ArrowUpCircle className="w-5 h-5"/> : <ArrowDownCircle className="w-5 h-5"/>}
-                       {Math.abs(strat.total_profit_abs).toFixed(2)} U
-                     </span>
-                   </div>
-                   <div className="text-right">
-                     <span className={`text-sm font-semibold ${strat.total_profit_pct >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {strat.total_profit_pct > 0 ? '+' : ''}{strat.total_profit_pct.toFixed(2)}%
-                     </span>
-                   </div>
-                 </div>
-                 <div className="grid grid-cols-2 gap-4 text-sm mt-3">
-                   <div><div className="text-neutral-500 flex items-center gap-1 mb-1"><Target className="w-3 h-3"/> Win Rate</div><div className="text-neutral-200 font-medium">{(strat.win_rate || 0).toFixed(1)}%</div></div>
-                   <div><div className="text-neutral-500 flex items-center gap-1 mb-1"><Activity className="w-3 h-3"/> Sharpe</div><div className="text-neutral-200 font-medium">{(strat.sharpe_ratio || 0).toFixed(2)}</div></div>
-                   <div><div className="text-neutral-500 flex items-center gap-1 mb-1"><TrendingDown className="w-3 h-3"/> Max DD</div><div className="text-rose-400 font-medium">{(strat.max_drawdown || 0).toFixed(2)} U</div></div>
-                   <div><div className="text-neutral-500 flex items-center gap-1 mb-1"><Clock className="w-3 h-3"/> Avg Time</div><div className="text-neutral-200 font-medium">{(strat.avg_duration_min || 0).toFixed(0)}m</div></div>
-                 </div>
-               </div>
-            ))}
-            {strategies.length === 0 && (
-              <div className="text-neutral-500 text-sm py-10 text-center flex items-center justify-center flex-col h-full">Waiting for backend sync...</div>
+          <div className="flex-1 overflow-y-auto space-y-4 pr-3 custom-scrollbar">
+            {filteredStrategies.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-neutral-600 italic text-sm text-center">
+                <EyeOff className="w-8 h-8 mb-3 opacity-20" />
+                Select strategies to compare performance
+              </div>
+            ) : (
+              filteredStrategies.map((strat, idx) => (
+                <div key={strat.strategy_id} className="bg-neutral-950/50 p-5 rounded-xl border border-neutral-800/50 relative transition-all hover:bg-neutral-800/30 hover:border-blue-500/30 group">
+                  <div className="absolute top-0 right-0 p-2 text-[10px] font-mono font-bold text-neutral-600 bg-neutral-900 rounded-bl-lg group-hover:text-blue-400 transition-colors">#{idx + 1}</div>
+                  <h3 className="font-bold text-neutral-200 truncate pr-16 group-hover:text-white transition-colors">{strat.strategy_name}</h3>
+                  <p className="text-[10px] text-neutral-500 mb-4 uppercase tracking-wider">Bot Instance: {strat.bot_name}</p>
+                  
+                  <div className="flex justify-between items-end mb-4 bg-neutral-900/50 p-3 rounded-lg">
+                    <div>
+                      <div className="text-[10px] text-neutral-500 uppercase tracking-widest mb-1">Total PnL</div>
+                      <span className={`text-xl font-bold flex items-center gap-2 ${strat.total_profit_abs >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {strat.total_profit_abs >= 0 ? <ArrowUpCircle className="w-4 h-4"/> : <ArrowDownCircle className="w-4 h-4"/>}
+                        {Math.abs(strat.total_profit_abs).toFixed(2)} U
+                      </span>
+                    </div>
+                    <div className="text-right">
+                       <span className={`text-sm font-bold px-2 py-0.5 rounded ${strat.total_profit_pct >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                          {strat.total_profit_pct > 0 ? '+' : ''}{strat.total_profit_pct.toFixed(2)}%
+                       </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-xs">
+                    <div className="group/item relative cursor-help">
+                      <div className="text-neutral-500 mb-0.5 flex items-center gap-1"><Target className="w-3 h-3"/> Win Rate</div>
+                      <div className="text-neutral-200 font-bold">{(strat.win_rate || 0).toFixed(1)}%</div>
+                      <div className="absolute bottom-full left-0 mb-2 w-32 p-2 bg-neutral-800 text-[10px] text-neutral-300 rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity z-20 pointer-events-none border border-neutral-700 shadow-xl">
+                        Percentage of winning trades vs total trades.
+                      </div>
+                    </div>
+                    <div className="group/item relative cursor-help">
+                      <div className="text-neutral-500 mb-0.5 flex items-center gap-1"><Activity className="w-3 h-3"/> Sharpe</div>
+                      <div className="text-neutral-200 font-bold">{(strat.sharpe_ratio || 0).toFixed(2)}</div>
+                      <div className="absolute bottom-full left-0 mb-2 w-32 p-2 bg-neutral-800 text-[10px] text-neutral-300 rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity z-20 pointer-events-none border border-neutral-700 shadow-xl">
+                        Risk-adjusted return ratio. Higher is better.
+                      </div>
+                    </div>
+                    <div className="group/item relative cursor-help">
+                      <div className="text-neutral-500 mb-0.5 flex items-center gap-1"><TrendingDown className="w-3 h-3"/> Max DD</div>
+                      <div className="text-rose-400 font-bold">{(strat.max_drawdown || 0).toFixed(2)} U</div>
+                      <div className="absolute bottom-full left-0 mb-2 w-32 p-2 bg-neutral-800 text-[10px] text-neutral-300 rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity z-20 pointer-events-none border border-neutral-700 shadow-xl">
+                        Deepest peak-to-trough decline in equity.
+                      </div>
+                    </div>
+                    <div className="group/item relative cursor-help">
+                      <div className="text-neutral-500 mb-0.5 flex items-center gap-1"><Clock className="w-3 h-3"/> Avg Dur</div>
+                      <div className="text-neutral-200 font-bold">{(strat.avg_duration_min || 0).toFixed(0)}m</div>
+                      <div className="absolute bottom-full left-0 mb-2 w-32 p-2 bg-neutral-800 text-[10px] text-neutral-300 rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity z-20 pointer-events-none border border-neutral-700 shadow-xl">
+                        Average time per trade in minutes.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
       </div>
 
-      {/* Grid phụ: Các biểu đồ phân tích bổ sung nằm khít nhau */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        
-        {/* Daily PnL Chart */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 shadow-lg flex flex-col relative group h-[450px]">
-          <button onClick={() => setFullscreenChart('daily')} className="absolute top-4 right-4 p-2 bg-neutral-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-neutral-700 z-10 cursor-pointer">
-            <Maximize2 className="w-5 h-5 text-neutral-300" />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {/* Daily PnL Bar Chart */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl flex flex-col relative group h-[480px] min-w-0">
+          <button 
+            onClick={() => setFullscreenChart('daily')} 
+            className="absolute top-6 right-6 p-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+          >
+            <Maximize2 className="w-5 h-5" />
           </button>
-          <h2 className="text-xl font-semibold mb-6 text-neutral-200 flex items-center gap-2">
-            Daily Insights & PnL Distribution
+          <h2 className="text-xl font-bold mb-8 text-neutral-100 flex items-center gap-3">
+             <TrendingDown className="w-5 h-5 text-emerald-500" /> Daily Distribution
           </h2>
-          <div className="flex-1 w-full">
+          <div className="flex-1 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis dataKey="date" stroke="#737373" fontSize={12} tickMargin={10} minTickGap={30} />
-                <YAxis stroke="#737373" fontSize={12} />
-                <RechartsTooltip contentStyle={{ backgroundColor: "#171717", borderColor: "#262626", color: "#f5f5f5" }} itemStyle={{ color: "#e5e5e5" }} />
-                <Legend iconType="square" wrapperStyle={{ paddingTop: "10px" }} />
-                {strategies.map((strat, i) => (
-                  <Bar key={strat.strategy_id} dataKey={strat.strategy_id} name={strat.strategy_name} stackId="a" fill={colors[i % colors.length]} />
+              <BarChart data={filteredDailyData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                <XAxis dataKey="date" stroke="#525252" fontSize={11} tickMargin={12} minTickGap={40} />
+                <YAxis stroke="#525252" fontSize={11} />
+                <RechartsTooltip content={<CustomTooltip type="daily" />} />
+                <Legend iconType="square" wrapperStyle={{ paddingTop: "24px", fontSize: "12px" }} />
+                {filteredStrategies.map((strat, i) => (
+                  <Bar key={strat.strategy_id} dataKey={strat.strategy_id} name={strat.strategy_name} stackId="a" fill={COLORS[i % COLORS.length]} />
                 ))}
-                {/* THANH SCROLL ZOOM CỦA TRADING (BRUSH) */}
-                <Brush dataKey="date" height={25} stroke="#10b981" fill="#171717" travellerWidth={10} />
+                <Brush dataKey="date" height={30} stroke="#10b981" fill="#0a0a0a" travellerWidth={12} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Win Rate vs Drawdown Landscape */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 shadow-lg flex flex-col relative group h-[450px]">
-          <button onClick={() => setFullscreenChart('winrate')} className="absolute top-4 right-4 p-2 bg-neutral-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-neutral-700 z-10 cursor-pointer">
-            <Maximize2 className="w-5 h-5 text-neutral-300" />
-          </button>
-          <h2 className="text-xl font-semibold mb-6 text-neutral-200 flex items-center gap-2">
-            Risk & Reward Landscape
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl flex flex-col relative group h-[480px] min-w-0">
+          <h2 className="text-xl font-bold mb-8 text-neutral-100 flex items-center gap-3">
+            <Target className="w-5 h-5 text-amber-500" /> Risk/Reward Matrix
           </h2>
-          <div className="flex-1 w-full">
+          <div className="flex-1 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis type="number" dataKey="win_rate" name="Win Rate" unit="%" stroke="#737373" domain={['auto', 'auto']} />
-                <YAxis type="number" dataKey="max_drawdown" name="Max DD" unit=" U" stroke="#737373" reversed={false} />
-                <ZAxis type="number" dataKey="abs_profit" range={[60, 400]} name="Profit" />
-                <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: "#171717", borderColor: "#262626", color: "#f5f5f5" }} />
-                <Legend iconType="circle" />
-                {strategies.map((strat, i) => (
-                  <Scatter key={strat.strategy_id} name={strat.strategy_name} data={[strat]} fill={colors[i % colors.length]} />
+                <XAxis type="number" dataKey="win_rate" name="Win Rate" unit="%" stroke="#525252" fontSize={11} domain={[0, 100]} />
+                <YAxis type="number" dataKey="max_drawdown" name="Max DD" unit=" U" stroke="#525252" fontSize={11} reversed={false} />
+                <ZAxis type="number" dataKey="abs_profit" range={[100, 600]} name="Profit" />
+                <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip type="scatter" />} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: "24px", fontSize: "12px" }} />
+                {filteredStrategies.map((strat, i) => (
+                  <Scatter key={strat.strategy_id} name={strat.strategy_name} data={[strat]} fill={COLORS[i % COLORS.length]} />
                 ))}
               </ScatterChart>
             </ResponsiveContainer>
           </div>
         </div>
-
       </div>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #171717;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #404040;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #525252;
+        }
+      `}</style>
     </div>
   );
 }
