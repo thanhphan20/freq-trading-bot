@@ -8,8 +8,12 @@ import {
 } from "recharts";
 import { 
   ArrowUpCircle, ArrowDownCircle, ShieldCheck, Activity, 
-  Target, Clock, TrendingDown, Maximize2, X, Filter, Eye, EyeOff
+  Target, Clock, TrendingDown, Maximize2, X, Filter, Eye, EyeOff, Loader2
 } from "lucide-react";
+
+import EquityCurve from "@/components/charts/EquityCurve";
+import DailyPerformance from "@/components/charts/DailyPerformance";
+import RiskReturnScatter from "@/components/charts/RiskReturnScatter";
 
 interface Strategy {
   strategy_id: string;
@@ -59,34 +63,6 @@ const demoData = demoDataImport as unknown as DemoData;
 
 const COLORS = ["#3b82f6", "#60a5fa", "#fbbf24", "#f87171", "#a78bfa", "#f472b6", "#2dd4bf", "#fb7185", "#e5e7eb", "#818cf8"];
 
-// Custom Tooltip Component
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTooltip = ({ active, payload, label, type }: { active?: boolean, payload?: any[], label?: string, type?: string }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-lg shadow-2xl backdrop-blur-md">
-        <p className="text-neutral-400 text-xs mb-2 font-mono uppercase tracking-widest">
-          {type === 'daily' ? label : new Date(label || '').toLocaleString()}
-        </p>
-        <div className="space-y-2">
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                <span className="text-sm font-medium text-neutral-200">{entry.name}</span>
-              </div>
-              <span className={`text-sm font-bold ${entry.value >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {entry.value.toFixed(2)} {type === 'equity' || type === 'daily' ? 'USDT' : ''}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  return null;
-};
 
 export default function Dashboard() {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
@@ -94,6 +70,7 @@ export default function Dashboard() {
   const [dailyData, setDailyData] = useState<DailyRow[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
 
   useEffect(() => {
     // 1. Fetch Strategies
@@ -112,32 +89,43 @@ export default function Dashboard() {
     fetch("/api/equity-curve")
       .then((res) => res.json())
       .then((data) => {
-        if (data.curve) {
-          const groupedData = data.curve.reduce((acc: Record<string, ChartRow>, row: RawCurveRow) => {
-            if (!acc[row.timestamp]) acc[row.timestamp] = { timestamp: row.timestamp };
-            acc[row.timestamp][row.strategy_id] = row.cumulative_profit;
-            return acc;
-          }, {});
-          setChartData(Object.values(groupedData) as ChartRow[]);
-        }
+        const raw = data.curve || [];
+        // Group by timestamp to create multi-line chart data
+        const grouped: { [key: string]: ChartRow } = {};
+        raw.forEach((row: RawCurveRow) => {
+          if (!grouped[row.timestamp]) {
+            grouped[row.timestamp] = { timestamp: row.timestamp };
+          }
+          grouped[row.timestamp][row.strategy_id] = row.cumulative_profit;
+        });
+        
+        const sorted = Object.values(grouped).sort((a, b) => 
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+
+        // OPTIMIZATION: If data is too dense, decimate it (keep every 2nd point)
+        const optimized = sorted.length > 500 
+          ? sorted.filter((_, i) => i % 2 === 0) 
+          : sorted;
+
+        setChartData(optimized);
       });
 
     // 3. Fetch Daily Performance
     fetch("/api/daily-performance")
       .then((res) => res.json())
       .then((data) => {
-        if (data.performance) {
-          const groupedData = data.performance.reduce((acc: Record<string, DailyRow>, row: RawPerformanceRow) => {
-            if (!acc[row.date]) acc[row.date] = { date: row.date };
-            acc[row.date][row.strategy_id] = row.daily_profit_abs;
-            return acc;
-          }, {});
-          
-          const sorted = (Object.values(groupedData) as DailyRow[]).sort((a: DailyRow, b: DailyRow) => {
-            return new Date(a.date).getTime() - new Date(b.date).getTime();
-          });
-          setDailyData(sorted);
-        }
+        const raw = data.performance || [];
+        const grouped: { [key: string]: DailyRow } = {};
+        raw.forEach((row: RawPerformanceRow) => {
+          if (!grouped[row.date]) {
+            grouped[row.date] = { date: row.date };
+          }
+          grouped[row.date][row.strategy_id] = row.daily_profit_abs;
+        });
+        setDailyData(Object.values(grouped).sort((a, b) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        ));
       });
   }, []);
 
@@ -147,32 +135,16 @@ export default function Dashboard() {
     [strategies, selectedIds]
   );
 
-  const filteredChartData = useMemo(() => 
-    chartData.map(row => {
-      const filteredRow: ChartRow = { timestamp: row.timestamp };
-      selectedIds.forEach(id => {
-        if (row[id] !== undefined) filteredRow[id] = row[id];
-      });
-      return filteredRow;
-    }),
-    [chartData, selectedIds]
-  );
-
-  const filteredDailyData = useMemo(() => 
-    dailyData.map(row => {
-      const filteredRow: DailyRow = { date: row.date };
-      selectedIds.forEach(id => {
-        if (row[id] !== undefined) filteredRow[id] = row[id];
-      });
-      return filteredRow;
-    }),
-    [dailyData, selectedIds]
-  );
-
   const toggleStrategy = (id: string) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+    setIsToggling(true);
+    // Use a small delay to allow the spinner to render before the heavy chart update
+    setTimeout(() => {
+      setSelectedIds(prev => 
+        prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      );
+      // Wait for the next tick to turn off the spinner
+      setTimeout(() => setIsToggling(false), 100);
+    }, 10);
   };
 
   const toggleAll = () => {
@@ -204,34 +176,20 @@ export default function Dashboard() {
           </div>
           <div className="flex-1 bg-neutral-900/50 border border-neutral-800 rounded-2xl p-8 shadow-2xl min-h-0">
             {fullscreenChart === 'equity' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={filteredChartData} margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
-                  <XAxis dataKey="timestamp" stroke="#737373" tickFormatter={(val) => new Date(val).toLocaleDateString()} minTickGap={50} />
-                  <YAxis stroke="#737373" domain={['auto', 'auto']} />
-                  <RechartsTooltip content={<CustomTooltip type="equity" />} />
-                  <Legend wrapperStyle={{ paddingTop: "30px" }} />
-                  {filteredStrategies.map((strat, i) => (
-                    <Line key={strat.strategy_id} type="monotone" name={strat.strategy_name} dataKey={strat.strategy_id} stroke={COLORS[i % COLORS.length]} strokeWidth={3} dot={false} activeDot={{ r: 8, strokeWidth: 0 }} />
-                  ))}
-                  <Brush dataKey="timestamp" height={40} stroke="#3b82f6" fill="#171717" tickFormatter={(v) => new Date(v).toLocaleDateString()} travellerWidth={15} />
-                </LineChart>
-              </ResponsiveContainer>
+              <EquityCurve 
+                data={chartData} 
+                strategies={strategies} 
+                selectedIds={selectedIds} 
+                colors={COLORS} 
+              />
             )}
             {fullscreenChart === 'daily' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={filteredDailyData} margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
-                  <XAxis dataKey="date" stroke="#737373" />
-                  <YAxis stroke="#737373" />
-                  <RechartsTooltip content={<CustomTooltip type="daily" />} />
-                  <Legend wrapperStyle={{ paddingTop: "30px" }} />
-                  {filteredStrategies.map((strat, i) => (
-                    <Bar key={strat.strategy_id} dataKey={strat.strategy_id} name={strat.strategy_name} stackId="a" fill={COLORS[i % COLORS.length]} />
-                  ))}
-                  <Brush dataKey="date" height={40} stroke="#10b981" fill="#171717" travellerWidth={15} />
-                </BarChart>
-              </ResponsiveContainer>
+              <DailyPerformance 
+                data={dailyData} 
+                strategies={strategies} 
+                selectedIds={selectedIds} 
+                colors={COLORS} 
+              />
             )}
           </div>
         </div>
@@ -341,20 +299,21 @@ export default function Dashboard() {
                </div>
             </div>
           </div>
-          <div className="flex-1 min-h-[450px] w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={filteredChartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
-                <XAxis dataKey="timestamp" stroke="#525252" fontSize={11} tickMargin={12} tickFormatter={(val) => new Date(val).toLocaleDateString()} minTickGap={40} />
-                <YAxis stroke="#525252" fontSize={11} domain={['auto', 'auto']} />
-                <RechartsTooltip content={<CustomTooltip type="equity" />} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: "24px", fontSize: "12px", color: "#a3a3a3" }} />
-                {filteredStrategies.map((strat, i) => (
-                  <Line key={strat.strategy_id} type="monotone" name={strat.strategy_name} dataKey={strat.strategy_id} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                ))}
-                <Brush dataKey="timestamp" height={30} stroke="#3b82f6" fill="#0a0a0a" tickFormatter={(v) => new Date(v).toLocaleDateString()} travellerWidth={12} />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="flex-1 min-h-[450px] w-full min-w-0 relative">
+            {isToggling && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[1px] rounded-xl transition-all">
+                <div className="flex flex-col items-center gap-3 bg-neutral-900/80 p-4 rounded-2xl border border-neutral-800 shadow-2xl">
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-tighter">Syncing...</span>
+                </div>
+              </div>
+            )}
+            <EquityCurve 
+              data={chartData} 
+              strategies={strategies} 
+              selectedIds={selectedIds} 
+              colors={COLORS} 
+            />
           </div>
         </div>
 
@@ -441,19 +400,12 @@ export default function Dashboard() {
              <TrendingDown className="w-5 h-5 text-emerald-500" /> Daily Distribution
           </h2>
           <div className="flex-1 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filteredDailyData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
-                <XAxis dataKey="date" stroke="#525252" fontSize={11} tickMargin={12} minTickGap={40} />
-                <YAxis stroke="#525252" fontSize={11} />
-                <RechartsTooltip content={<CustomTooltip type="daily" />} />
-                <Legend iconType="square" wrapperStyle={{ paddingTop: "24px", fontSize: "12px" }} />
-                {filteredStrategies.map((strat, i) => (
-                  <Bar key={strat.strategy_id} dataKey={strat.strategy_id} name={strat.strategy_name} stackId="a" fill={COLORS[i % COLORS.length]} />
-                ))}
-                <Brush dataKey="date" height={30} stroke="#10b981" fill="#0a0a0a" travellerWidth={12} />
-              </BarChart>
-            </ResponsiveContainer>
+            <DailyPerformance 
+              data={dailyData} 
+              strategies={strategies} 
+              selectedIds={selectedIds} 
+              colors={COLORS} 
+            />
           </div>
         </div>
 
@@ -463,19 +415,11 @@ export default function Dashboard() {
             <Target className="w-5 h-5 text-amber-500" /> Risk/Reward Matrix
           </h2>
           <div className="flex-1 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis type="number" dataKey="win_rate" name="Win Rate" unit="%" stroke="#525252" fontSize={11} domain={[0, 100]} />
-                <YAxis type="number" dataKey="max_drawdown" name="Max DD" unit=" U" stroke="#525252" fontSize={11} reversed={false} />
-                <ZAxis type="number" dataKey="abs_profit" range={[100, 600]} name="Profit" />
-                <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip type="scatter" />} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: "24px", fontSize: "12px" }} />
-                {filteredStrategies.map((strat, i) => (
-                  <Scatter key={strat.strategy_id} name={strat.strategy_name} data={[strat]} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </ScatterChart>
-            </ResponsiveContainer>
+            <RiskReturnScatter 
+              strategies={strategies} 
+              selectedIds={selectedIds} 
+              colors={COLORS} 
+            />
           </div>
         </div>
       </div>
