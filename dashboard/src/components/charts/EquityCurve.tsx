@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
   Legend, ResponsiveContainer, Brush 
@@ -8,9 +8,14 @@ import {
 
 import CustomTooltip from './CustomTooltip';
 
+interface StrategyData {
+  strategy_id: string;
+  strategy_name: string;
+}
+
 interface EquityCurveProps {
-  data: any[];
-  strategies: any[];
+  data: Array<{ timestamp: string | number; [key: string]: string | number }>;
+  strategies: StrategyData[];
   selectedIds: string[];
   colors: string[];
 }

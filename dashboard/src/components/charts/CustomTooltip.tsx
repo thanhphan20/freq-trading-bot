@@ -4,7 +4,7 @@ import React from 'react';
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: Array<{ color?: string; name?: string; value?: number }>;
   label?: string;
   type?: string;
 }
@@ -17,7 +17,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, t
           {type === 'daily' ? label : new Date(label || '').toLocaleString()}
         </p>
         <div className="space-y-2">
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <div key={index} className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />

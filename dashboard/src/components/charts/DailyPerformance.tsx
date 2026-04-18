@@ -8,9 +8,14 @@ import {
 
 import CustomTooltip from './CustomTooltip';
 
+interface StrategyData {
+  strategy_id: string;
+  strategy_name: string;
+}
+
 interface DailyPerformanceProps {
-  data: any[];
-  strategies: any[];
+  data: Array<{ date: string; [key: string]: string | number }>;
+  strategies: StrategyData[];
   selectedIds: string[];
   colors: string[];
 }

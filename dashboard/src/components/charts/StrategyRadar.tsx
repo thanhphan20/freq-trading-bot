@@ -57,7 +57,7 @@ const StrategyRadar: React.FC<StrategyRadarProps> = ({
     ];
 
     return metrics.map(m => {
-      const row: any = { subject: m.name };
+      const row: Record<string, string | number> = { subject: m.name };
       selected.forEach(s => {
         let value = 0;
         if (m.key === 'profit') value = normalize(s.total_profit_pct, bounds.profit.min, bounds.profit.max);

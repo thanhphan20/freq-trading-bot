@@ -8,8 +8,16 @@ import {
 
 import CustomTooltip from './CustomTooltip';
 
+interface StrategyData {
+  strategy_id: string;
+  strategy_name: string;
+  max_drawdown: number;
+  win_rate: number;
+  abs_profit: number;
+}
+
 interface RiskReturnScatterProps {
-  strategies: any[];
+  strategies: StrategyData[];
   selectedIds: string[];
   colors: string[];
 }

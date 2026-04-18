@@ -2,11 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { 
-  LineChart, Line, BarChart, Bar, ScatterChart, Scatter, 
-  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
-  Legend, ResponsiveContainer, ZAxis, Brush 
-} from "recharts";
-import { 
   ArrowUpCircle, ArrowDownCircle, ShieldCheck, Activity, 
   Target, Clock, TrendingDown, Maximize2, X, Filter, Eye, EyeOff, Loader2, Hexagon
 } from "lucide-react";
