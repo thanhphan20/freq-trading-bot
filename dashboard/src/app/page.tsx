@@ -8,12 +8,13 @@ import {
 } from "recharts";
 import { 
   ArrowUpCircle, ArrowDownCircle, ShieldCheck, Activity, 
-  Target, Clock, TrendingDown, Maximize2, X, Filter, Eye, EyeOff, Loader2
+  Target, Clock, TrendingDown, Maximize2, X, Filter, Eye, EyeOff, Loader2, Hexagon
 } from "lucide-react";
 
 import EquityCurve from "@/components/charts/EquityCurve";
 import DailyPerformance from "@/components/charts/DailyPerformance";
 import RiskReturnScatter from "@/components/charts/RiskReturnScatter";
+import StrategyRadar from "@/components/charts/StrategyRadar";
 
 interface Strategy {
   strategy_id: string;
@@ -387,7 +388,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
         {/* Daily PnL Bar Chart */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl flex flex-col relative group h-[480px] min-w-0">
           <button 
@@ -416,6 +417,20 @@ export default function Dashboard() {
           </h2>
           <div className="flex-1 w-full min-w-0">
             <RiskReturnScatter 
+              strategies={strategies} 
+              selectedIds={selectedIds} 
+              colors={COLORS} 
+            />
+          </div>
+        </div>
+
+        {/* Strategy DNA Radar */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl flex flex-col relative group h-[480px] min-w-0">
+          <h2 className="text-xl font-bold mb-8 text-neutral-100 flex items-center gap-3">
+            <Hexagon className="w-5 h-5 text-blue-400" /> Strategy DNA
+          </h2>
+          <div className="flex-1 w-full min-w-0">
+            <StrategyRadar 
               strategies={strategies} 
               selectedIds={selectedIds} 
               colors={COLORS} 
