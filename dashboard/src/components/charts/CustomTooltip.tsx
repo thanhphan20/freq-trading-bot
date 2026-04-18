@@ -23,8 +23,8 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, t
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                 <span className="text-sm font-medium text-neutral-200">{entry.name}</span>
               </div>
-              <span className={`text-sm font-bold ${entry.value >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {entry.value.toFixed(2)} {type === 'equity' || type === 'daily' ? 'USDT' : ''}
+              <span className={`text-sm font-bold ${(entry.value ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {(entry.value ?? 0).toFixed(2)} {type === 'equity' || type === 'daily' ? 'USDT' : ''}
               </span>
             </div>
           ))}
