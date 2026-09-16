@@ -75,6 +75,10 @@ def init_db():
     conn.commit()
     return conn
 
+def compound_returns(returns):
+    """Compounded return ratio from per-trade return ratios: prod(1 + r) - 1."""
+    return (returns + 1).prod() - 1
+
 def calculate_sharpe(daily_returns):
     if len(daily_returns) < 2:
         return 0.0
@@ -162,7 +166,7 @@ def update_metrics(conn):
             win_rate = (wins / total_trades) * 100 if total_trades > 0 else 0
             
             total_profit_abs = strat_df['close_profit_abs'].sum()
-            total_profit_pct = (strat_df['close_profit_pct'].sum()) * 100 if 'close_profit_pct' in strat_df.columns else 0.0
+            total_profit_pct = compound_returns(strat_df['close_profit_pct']) * 100 if 'close_profit_pct' in strat_df.columns else 0.0
             
             avg_duration = strat_df['trade_duration_min'].mean()
 
@@ -175,11 +179,13 @@ def update_metrics(conn):
             # Daily Performance (for Sharpe & Snapshots)
             daily_stats = strat_df.groupby('date').agg(
                 daily_profit_abs=('close_profit_abs', 'sum'),
+                daily_return=('close_profit_pct', lambda x: compound_returns(x)),
                 trades_count=('id', 'count'),
                 wins=('is_win', 'sum')
             ).reset_index()
             
-            sharpe_ratio = calculate_sharpe(daily_stats['daily_profit_abs'])
+            # ponytail: return series compounded from per-trade pct (equal-stake assumption); exact Sharpe needs the equity curve
+            sharpe_ratio = calculate_sharpe(daily_stats['daily_return'])
 
             # 1. Update strategy_metrics
             cursor.execute('''
